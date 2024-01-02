@@ -5,6 +5,7 @@ import pg from "pg";
 
 const app = express();
 const port = 3000;
+const SECRET_KEY = "Itisjust@29876_secret20xparasheros";
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
@@ -45,7 +46,7 @@ const db = new pg.Client({
 db.connect();
 
 // --------------------------- CREATE TABLES -------------------
-
+/*
 const createTableQuery = "CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(50) UNIQUE NOT NULL CHECK (email <> ''), password VARCHAR(512) NOT NULL CHECK (password <> ''))";
 
 db.query(createTableQuery, (err, res) => {
@@ -55,7 +56,16 @@ db.query(createTableQuery, (err, res) => {
         console.log("Table users created successfully!");
     }
 });
+*/
 
+// --------------------------- CREATE pgcrypto EXTENSION -------------------
+db.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;', (err, res) => {
+    if (err) {
+        console.error(err.message);
+    } else {
+    console.log('pgcrypto extension enabled');
+    };
+});
 
 //  ---------------- Render Home Page -------------------
 app.get("/", (req, res) => {
@@ -76,7 +86,7 @@ app.post("/register", async (req, res) => {
         if (user) {
             res.render("register", {message: "The Email already exist, choose another!"});
         } else {
-            await db.query("INSERT INTO users (email, password) VALUES ($1, $2)", [username, password]);
+            await db.query(`INSERT INTO users (email, password) VALUES ($1, pgp_sym_encrypt($2, '${SECRET_KEY}'))`, [username, password]);
             res.render("secrets");
         }
     } catch (err) {
@@ -95,10 +105,12 @@ app.get("/login", (req, res) => {
 app.post("/login", async (req, res) => {
     const { username, password } = req.body;
     try {
-        const results = await db.query("SELECT * FROM users WHERE email = $1", [username]);
-        const user = results.rows[0];
+        const query = 'SELECT email, pgp_sym_decrypt(password::bytea, $2) AS "decryptedPassword" FROM users WHERE email = $1';
+        const values = [username, SECRET_KEY];
+        const user = (await db.query(query, values)).rows[0];
         if (user) {
-            if (password == user.password) {
+            console.log(user);
+            if (password == user.decryptedPassword) {
                 res.render("secrets");
             } else {
                 res.render("login", {message: "The password is not correct, try again!"}); 
