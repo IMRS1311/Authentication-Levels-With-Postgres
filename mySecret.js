@@ -2,10 +2,11 @@ import express from "express";
 import bodyParser from "body-parser";
 import ejs from "ejs";
 import pg from "pg";
+import dotenv from 'dotenv';
 
+dotenv.config();
 const app = express();
 const port = 3000;
-const SECRET_KEY = "Itisjust@29876_secret20xparasheros";
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
@@ -86,7 +87,7 @@ app.post("/register", async (req, res) => {
         if (user) {
             res.render("register", {message: "The Email already exist, choose another!"});
         } else {
-            await db.query(`INSERT INTO users (email, password) VALUES ($1, pgp_sym_encrypt($2, '${SECRET_KEY}'))`, [username, password]);
+            await db.query(`INSERT INTO users (email, password) VALUES ($1, pgp_sym_encrypt($2, '${process.env.SECRET_KEY}'))`, [username, password]);
             res.render("secrets");
         }
     } catch (err) {
@@ -106,7 +107,7 @@ app.post("/login", async (req, res) => {
     const { username, password } = req.body;
     try {
         const query = 'SELECT email, pgp_sym_decrypt(password::bytea, $2) AS "decryptedPassword" FROM users WHERE email = $1';
-        const values = [username, SECRET_KEY];
+        const values = [username, process.env.SECRET_KEY];
         const user = (await db.query(query, values)).rows[0];
         if (user) {
             console.log(user);
