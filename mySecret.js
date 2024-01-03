@@ -2,10 +2,9 @@ import express from "express";
 import bodyParser from "body-parser";
 import ejs from "ejs";
 import pg from "pg";
-import dotenv from 'dotenv';
-import md5 from "md5";
+import bcrypt from "bcrypt";
 
-dotenv.config();
+const saltRounds = 10;
 const app = express();
 const port = 3000;
 
@@ -79,13 +78,14 @@ app.post("/register", async (req, res) => {
         if (user) {
             res.render("register", {message: "The Email already exist, choose another!"});
         } else {
-            await db.query(`INSERT INTO users (email, password) VALUES ($1, $2)`, [username, md5(password)]);
+            bcrypt.hash(password, saltRounds, async (err, hash) => {
+                await db.query(`INSERT INTO users (email, password) VALUES ($1, $2)`, [username, hash]);
+            });
             res.render("secrets");
         }
     } catch (err) {
         console.log(err.message);
         res.render("register", {message: "Server is not connected, please try again later!"}); 
-
     }
 })
 
@@ -102,12 +102,13 @@ app.post("/login", async (req, res) => {
         const values = [username];
         const user = (await db.query(query, values)).rows[0];
         if (user) {
-            console.log(user);
-            if (md5(password) == user.password) {
-                res.render("secrets");
-            } else {
-                res.render("login", {message: "The password is not correct, try again!"}); 
-            }
+            bcrypt.compare(password, user.password, function(err, result) {
+                if (result == true) {
+                    res.render("secrets");
+                } else {
+                    res.render("login", {message: "The password is not correct, try again!"}); 
+                }
+            });
         } else {
             res.render("login", {message: "The username is not correct, try again!"}); 
         }
