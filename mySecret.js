@@ -3,6 +3,7 @@ import bodyParser from "body-parser";
 import ejs from "ejs";
 import pg from "pg";
 import dotenv from 'dotenv';
+import md5 from "md5";
 
 dotenv.config();
 const app = express();
@@ -59,15 +60,6 @@ db.query(createTableQuery, (err, res) => {
 });
 */
 
-// --------------------------- CREATE pgcrypto EXTENSION -------------------
-db.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;', (err, res) => {
-    if (err) {
-        console.error(err.message);
-    } else {
-    console.log('pgcrypto extension enabled');
-    };
-});
-
 //  ---------------- Render Home Page -------------------
 app.get("/", (req, res) => {
     res.render("home");
@@ -87,7 +79,7 @@ app.post("/register", async (req, res) => {
         if (user) {
             res.render("register", {message: "The Email already exist, choose another!"});
         } else {
-            await db.query(`INSERT INTO users (email, password) VALUES ($1, pgp_sym_encrypt($2, '${process.env.SECRET_KEY}'))`, [username, password]);
+            await db.query(`INSERT INTO users (email, password) VALUES ($1, $2)`, [username, md5(password)]);
             res.render("secrets");
         }
     } catch (err) {
@@ -106,12 +98,12 @@ app.get("/login", (req, res) => {
 app.post("/login", async (req, res) => {
     const { username, password } = req.body;
     try {
-        const query = 'SELECT email, pgp_sym_decrypt(password::bytea, $2) AS "decryptedPassword" FROM users WHERE email = $1';
-        const values = [username, process.env.SECRET_KEY];
+        const query = 'SELECT email, password FROM users WHERE email = $1';
+        const values = [username];
         const user = (await db.query(query, values)).rows[0];
         if (user) {
             console.log(user);
-            if (password == user.decryptedPassword) {
+            if (md5(password) == user.password) {
                 res.render("secrets");
             } else {
                 res.render("login", {message: "The password is not correct, try again!"}); 
