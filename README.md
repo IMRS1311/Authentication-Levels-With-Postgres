@@ -18,3 +18,12 @@ Authentication Level-4:Register & Login using password hashing/ salting with bcr
 1. Install bcrypt (npm i bcrypt) and import bcrypt. If you face any issue in installation, refer to the GITHUB repos of NPM to search the solution.
 2. Define the number of salt rounds: const saltRound = 10
 3. Remove the usage of MD5 from import, Register and Login routes and replace them with the bcrypt hashing/salting function as detailed in the code.
+
+Authentication Level-5: Using passport, express-session & sequelize to add Cookies & sessions to insure authenticate and de-authenticate users credentials with starts and expiries of users login sessions and server restarts:
+1. Installing & importing the relevant packages express-session, passport, passport-local, sequelize & connect-flash.
+2. Set up & initialize the session including the cookies properties.
+3. Set Up Sequelize and create User Model with PostgreSQL
+4. Initialize and start using passport
+5. Configure Passport Local Strategy.
+6. Update register and login routes.
+7. Adding Secret Route and Logout Route.
