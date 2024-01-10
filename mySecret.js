@@ -8,6 +8,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import Sequelize from "sequelize";
 import flash from "connect-flash";
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 dotenv.config();
 const saltRounds = 10;
@@ -58,6 +59,11 @@ const User = sequelize.define("user", {
         validate: {
             notEmpty: true
         }
+    },
+    isgoogleaccount: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
     }
 }, {
     timestamps: false,
@@ -115,10 +121,50 @@ passport.deserializeUser((id, done) => {
 });
 
 
+// -------- Setup Google Strategy --------
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    // userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo',
+    callbackURL: "http://localhost:3000/auth/google/secrets"
+    },
+    async function(accessToken, refreshToken, profile, cb) {
+        console.log(profile);
+        const password = Array(16).fill(null).map(() => Math.random().toString(36).charAt(2)).join('');
+        User.findOrCreate({
+            where: { email: profile.emails[0].value },
+            defaults: {
+                // Other defaults if necessary
+                isgoogleaccount: true,
+                password: await bcrypt.hash(password, saltRounds) // Hashing the password inline
+            }
+        })
+        .then(([user, created]) => {
+            return cb(null, user);
+        })
+        .catch(err => {
+            return cb(err);
+        });
+    }
+));
+
 //  ---------------- Render Home Page -------------------
 app.get("/", (req, res) => {
     res.render("home");
 });
+
+//  ---------------- Render Google Auth -------------------
+app.get("/auth/google",
+    passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get("/auth/google/secrets", 
+    passport.authenticate("google", { failureRedirect: "/register" }),
+    function(req, res) {
+    // Successful authentication, redirect Secrets.
+        res.redirect("/secrets");
+    }
+);
 
 //  --------------- Render Register Page --------------------
 app.get("/register", (req, res) => {
@@ -152,7 +198,9 @@ app.post('/register', async (req, res) => {
             }
         });
     } catch (error) {
+        console.log(error.message);
         res.render("register", { message: "An error occurred, please try again." });
+
     }
 });
 
@@ -178,6 +226,7 @@ app.get("/secrets", (req, res) =>{
     if (req.isAuthenticated()) {
         res.render("secrets");
     } else {
+        res.cookie('connect.sid', '', { expires: new Date(0) });
         res.redirect("/login");
     }
 });
@@ -189,6 +238,7 @@ app.get('/logout', (req, res) => {
             console.log(error.message); 
             return next(error);
         }
+        res.cookie('connect.sid', '', { expires: new Date(0) });
         res.redirect("/"); // Redirect to the homepage or login page after logout
     }); 
 });

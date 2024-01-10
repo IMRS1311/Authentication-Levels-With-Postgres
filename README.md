@@ -27,3 +27,15 @@ Authentication Level-5: Using passport, express-session & sequelize to add Cooki
 5. Configure Passport Local Strategy.
 6. Update register and login routes.
 7. Adding Secret Route and Logout Route.
+
+Authentication Level-6: OAuth 2.0 & Implement Sign In with Google:
+1. Create an application on the Google Developers Console.
+2. Alter our Database Table to suit our app requirement (Add isgoogleaccount column).
+3. Install & import the required packages ("passport-google-oauth20")
+4. Configure Google strategy as defined in passport Docs & adjust it to suit our requirements.
+5. Replace serializing and deserializing functions with the ones defined in passport documentation.
+6. Download & copy the bootstrap-social.css to our public folder.
+7. Add the Sign Up with Google Button in Register & login EJS and add the classes relevant to bootstrap-social.css.
+8. Update the header.ejs with the incorporated CSS file.
+9. Add “/auth/google” route.
+10. Add “/auth/google/secrets” route.
