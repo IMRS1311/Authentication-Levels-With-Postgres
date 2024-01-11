@@ -39,3 +39,9 @@ Authentication Level-6: OAuth 2.0 & Implement Sign In with Google:
 8. Update the header.ejs with the incorporated CSS file.
 9. Add “/auth/google” route.
 10. Add “/auth/google/secrets” route.
+
+Update:
+1. Change the secrets route to get secrets and render the secrets page.
+2. Include GET SUBMIT Route to authenticate the user and render the submit page.
+3. Include POST SUBMIT Route to post the user new secret to the Database and redirect to secrets page.
+4. Update secrets.ejs to loop through the secrets and show them on client-side

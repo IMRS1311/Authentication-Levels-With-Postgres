@@ -46,12 +46,8 @@ const User = sequelize.define("user", {
         primaryKey: true
     },
     email: {
-        type: Sequelize.STRING(50),
-        allowNull: false,
-        unique: true,
-        validate: {
-            notEmpty: true
-        }
+        type: Sequelize.STRING(100),
+        unique: true
     },
     password: {
         type: Sequelize.STRING(512),
@@ -60,10 +56,16 @@ const User = sequelize.define("user", {
             notEmpty: true
         }
     },
-    isgoogleaccount: {
-        type: Sequelize.BOOLEAN,
+    externalid: {
+        type: Sequelize.STRING(512),
         allowNull: false,
-        defaultValue: false,
+    },
+    idsource: {
+        type: Sequelize.STRING(50),
+        allowNull: false,
+    },
+    secret: {
+        type: Sequelize.TEXT,
     }
 }, {
     timestamps: false,
@@ -132,11 +134,13 @@ passport.use(new GoogleStrategy({
         console.log(profile);
         const password = Array(16).fill(null).map(() => Math.random().toString(36).charAt(2)).join('');
         User.findOrCreate({
-            where: { email: profile.emails[0].value },
+            where: { externalid: profile.id },
             defaults: {
                 // Other defaults if necessary
-                isgoogleaccount: true,
-                password: await bcrypt.hash(password, saltRounds) // Hashing the password inline
+                //email: profile.emails[0].value,
+                password: await bcrypt.hash(password, saltRounds), // Hashing the password inline
+                externalid: profile.id,
+                idsource: "Google"
             }
         })
         .then(([user, created]) => {
@@ -221,13 +225,44 @@ app.post("/login",
     }
 );
 
-//  ------------ Secrets Route ------------------
-app.get("/secrets", (req, res) =>{
+//  ------------Get Secrets Route ------------------
+app.get("/secrets", async (req, res, error) =>{
+    const foundUsers = await User.findAll({
+        where: {
+            secret: {
+                [Sequelize.Op.ne]: null  // Op.ne is the "not equal" operator
+            }
+        }
+    });
+    if (foundUsers) {
+        res.render("secrets", {userWithSecrets: foundUsers});
+    } else {
+        console.log(error.message)        
+    }
+});
+
+
+//  ------------ Get Submit Route ------------------
+app.get("/submit", (req, res) => {
     if (req.isAuthenticated()) {
-        res.render("secrets");
+        res.render("submit");
     } else {
         res.cookie('connect.sid', '', { expires: new Date(0) });
         res.redirect("/login");
+    }
+});
+
+//  ------------ Post Submit Route ------------------
+app.post("/submit", async (req, res, error) => {
+    const submittedSecret = req.body.secret;
+    console.log(req.user)
+    const foundUser = await User.findByPk(req.user.id);
+    if (foundUser) {
+        foundUser.secret = submittedSecret;
+        await foundUser.save();
+        res.redirect("/secrets");
+    } else {
+        console.log(error.message)
     }
 });
 
